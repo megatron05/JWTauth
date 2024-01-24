@@ -1,4 +1,4 @@
-package com.ecomm.security.security;
+package com.ecomm.security.Service;
 
 import com.ecomm.security.DAO.UserRepo;
 import com.ecomm.security.Model.Role;
@@ -27,9 +27,9 @@ public class CustomUserDetailsService implements UserDetailsService {
     }
 
     @Override
-    public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
-        UserEntity user = userRepo.findByUsername(username).orElseThrow(() ->new UsernameNotFoundException("Username not found"));
-        return new User(user.getUsername(), user.getPassword(), mapRolesToAuthorities(user.getRoles()));
+    public UserDetails loadUserByUsername(String email) throws UsernameNotFoundException {
+        UserEntity user = userRepo.findByEmail(email).orElseThrow(() -> new UsernameNotFoundException("Username not found"));
+        return new User(user.getEmail(), user.getPassword(), mapRolesToAuthorities(user.getRoles()));
     }
 
     private Collection<GrantedAuthority> mapRolesToAuthorities(List<Role> roles){
