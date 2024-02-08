@@ -1,14 +1,10 @@
 package com.ecomm.security.security;
 
-import com.ecomm.security.DAO.UserRepo;
+
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.autoconfigure.neo4j.Neo4jProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.AuthenticationManager;
-import org.springframework.security.authentication.AuthenticationProvider;
-import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
@@ -20,15 +16,18 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
+import static org.springframework.security.config.Customizer.withDefaults;
+
 @Configuration
 @EnableWebSecurity
 public class SecurityConfig {
 
     private JwtEntryPoint authEntryPoint;
-    private CustomUserDetailsService userDetailsService;
+
+
     @Autowired
-    public SecurityConfig(CustomUserDetailsService userDetailsService, JwtEntryPoint authEntryPoint) {
-        this.userDetailsService = userDetailsService;
+    public SecurityConfig(JwtEntryPoint authEntryPoint) {
+
         this.authEntryPoint = authEntryPoint;
     }
 
@@ -40,12 +39,13 @@ public class SecurityConfig {
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> {
                     auth.requestMatchers("/auth/**").permitAll();
+                    auth.requestMatchers("/secured/**").hasRole("ADMIN");
                     auth.anyRequest().authenticated();})
-                .httpBasic(Customizer.withDefaults())
+                .oauth2Login(withDefaults())
                 .addFilterBefore(jwtAuthenticationFilter(), UsernamePasswordAuthenticationFilter.class)
+                .httpBasic(Customizer.withDefaults())
                 .build();
     }
-
 
     @Bean
     public AuthenticationManager authenticationManager(
