@@ -52,5 +52,16 @@ public class JWTGenerator {
         }
     }
 
+    public String refreshToken(String email){
+        Date currentDate = new Date();
+        Date expiryDate = new Date(currentDate.getTime() + SecurityConstants.JWT_EXPIRATION);
+        return Jwts.builder()
+                .setSubject(email)
+                .setIssuedAt(new Date())
+                .setExpiration(expiryDate)
+                .signWith(key, SignatureAlgorithm.HS512)
+                .compact();
+    }
+
 
 }
