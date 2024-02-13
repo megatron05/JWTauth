@@ -24,7 +24,7 @@ public class AuthService {
                         email,
                         password));
         if (authentication.isAuthenticated()) {
-            tokenService.createUniqueToken(email);
+            tokenService.findUniqueToken(email);
             SecurityContextHolder.getContext().setAuthentication(authentication);
             return jwtGenerator.generateToken(authentication);
         } else

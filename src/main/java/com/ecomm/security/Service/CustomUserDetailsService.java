@@ -30,8 +30,9 @@ public class CustomUserDetailsService implements UserDetailsService {
     private PasswordEncoder passwordEncoder;
 
     @Autowired
-    public CustomUserDetailsService(UserRepo userRepo) {
+    public CustomUserDetailsService(UserRepo userRepo, RoleRepo roleRepo) {
         this.userRepo = userRepo;
+        this.roleRepo = roleRepo;
     }
 
     @Override

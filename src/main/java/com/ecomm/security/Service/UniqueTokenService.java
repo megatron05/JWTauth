@@ -21,22 +21,26 @@ public class UniqueTokenService {
         this.uniqueTokenRepo = uniqueTokenRepo;
     }
 
-    public void createUniqueToken(String email) {
-          UniqueToken uniqueToken = UniqueToken.builder()
-                .user(userRepo.findByEmail(email).get())
-                .token(UUID.randomUUID().toString())
-                .expiryDate(Instant.now().plusMillis(600000))//10
-                .build();
-        uniqueTokenRepo.save(uniqueToken);
+    public void findUniqueToken(String email) {
+        var user = userRepo.findByEmail(email).get();
+        if (getUniqueToken(user).isEmpty() || isUniqueTokenExpired(user)) {
+            UniqueToken uniqueToken = UniqueToken.builder()
+                    .user(userRepo.findByEmail(email).get())
+                    .token(UUID.randomUUID().toString())
+                    .expiryDate(Instant.now().plusMillis(600000))//10
+                    .build();
+            uniqueTokenRepo.save(uniqueToken);
+        }
     }
-
 
     public Optional<UniqueToken> findByToken(String token) {
         return uniqueTokenRepo.findByToken(token);
     }
 
     public String getUniqueToken(UserEntity user){
+        if (uniqueTokenRepo.findByUser(user).isPresent())
         return uniqueTokenRepo.findByUser(user).get().getToken();
+        else return "";
     }
     public UniqueToken verifyExpiration(UniqueToken token) {
         if (token.getExpiryDate().compareTo(Instant.now()) < 0) {
@@ -44,5 +48,14 @@ public class UniqueTokenService {
             throw new RuntimeException(token.getToken() + " Refresh token was expired. Please make a new signin request");
         }
         return token;
+    }
+
+    public boolean isUniqueTokenExpired(UserEntity user){
+        UniqueToken token = uniqueTokenRepo.findByUser(user).get();
+        if (token.getExpiryDate().compareTo(Instant.now()) < 0){
+            uniqueTokenRepo.delete(token);
+            return true;
+        }
+        return false;
     }
 }

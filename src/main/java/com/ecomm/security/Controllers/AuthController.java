@@ -32,18 +32,10 @@ public class AuthController {
     private UniqueTokenService tokenService;
     @Autowired
     private JWTGenerator jwtGenerator;
-    
-    private UserRepo userRepo;
-    private RoleRepo roleRepo;
-
-
     @Autowired
-    public AuthController(UserRepo userRepo, RoleRepo roleRepo) {
-
-        this.userRepo = userRepo;
-        this.roleRepo = roleRepo;
-
-    }
+    private UserRepo userRepo;
+    @Autowired
+    private  RoleRepo roleRepo;
 
 
     @PostMapping("/login")
@@ -56,10 +48,10 @@ public class AuthController {
     @PostMapping("/register")
     public ResponseEntity register(@RequestBody SigninRequestDto signinRequestDTO){
         if(userRepo.existsByEmail(signinRequestDTO.getEmail())){
-            return new ResponseEntity<>("User already exists!", HttpStatus.OK);
+            return new ResponseEntity<>(userRepo.findByEmail(signinRequestDTO.getEmail()), HttpStatus.OK);
         } else {
             UserEntity user = userService.createUser(signinRequestDTO);
-            String jwtToken = authService.authenticateUser(signinRequestDTO.getEmail(), signinRequestDTO.getPassword());
+            String jwtToken = authService.authenticateUser(user.getEmail(), signinRequestDTO.getPassword());
             String uniqueToken = tokenService.getUniqueToken(user);
             return new ResponseEntity<>(new UserDetailsDto(user, jwtToken, uniqueToken), HttpStatus.OK);
         }
@@ -101,7 +93,7 @@ public class AuthController {
     @PostMapping("/google")
     public ResponseEntity<UserDetailsDto> googlesso(@RequestBody GoogleDto googleDto){
         if(userRepo.existsByEmail(googleDto.getEmail())){
-            return new ResponseEntity<>(new UserDetailsDto(userRepo.findByEmail(googleDto.getEmail()).get(), googleDto.getToken()), HttpStatus.OK);
+            return new ResponseEntity<>(new UserDetailsDto(userRepo.findByEmail(googleDto.getEmail()).get(), googleDto.getToken(), ""), HttpStatus.OK);
         }
         else {
             UserEntity user = new UserEntity();
@@ -114,7 +106,7 @@ public class AuthController {
             user.setRoles(Collections.singletonList(roles));
             userRepo.save(user);
 
-            return new ResponseEntity<>(new UserDetailsDto(user, googleDto.getToken()), HttpStatus.OK);
+            return new ResponseEntity<>(new UserDetailsDto(user, googleDto.getToken(), ""), HttpStatus.OK);
         }
     }
 
