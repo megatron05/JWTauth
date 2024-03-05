@@ -40,7 +40,7 @@ public class AuthController {
 
     @PostMapping("/login")
     public ResponseEntity<UserDetailsDto> login(@RequestBody SigninRequestDto signinRequestDTO){
-            String jwtToken = authService.authenticateUser(signinRequestDTO.getEmail(), signinRequestDTO.getPassword());
+            String jwtToken = jwtGenerator.generateToken(authService.authenticateUser(signinRequestDTO.getEmail(), signinRequestDTO.getPassword()));
             UserEntity user = userRepo.findByEmail(signinRequestDTO.getEmail()).get();
             return new ResponseEntity<>(new UserDetailsDto(user, jwtToken, tokenService.getUniqueToken(user)), HttpStatus.OK);
     }
@@ -51,22 +51,22 @@ public class AuthController {
             return new ResponseEntity<>(userRepo.findByEmail(signinRequestDTO.getEmail()), HttpStatus.OK);
         } else {
             UserEntity user = userService.createUser(signinRequestDTO);
-            String jwtToken = authService.authenticateUser(user.getEmail(), signinRequestDTO.getPassword());
+            String jwtToken = jwtGenerator.generateToken(authService.authenticateUser(user.getEmail(), signinRequestDTO.getPassword()));
             String uniqueToken = tokenService.getUniqueToken(user);
             return new ResponseEntity<>(new UserDetailsDto(user, jwtToken, uniqueToken), HttpStatus.OK);
         }
     }
 
     @PostMapping("/refreshToken")
-    public RefreshTokenResponseDto refreshToken(@RequestBody RefreshTokenRequestDto refreshTokenRequestDto) {
-        return tokenService.findByToken(refreshTokenRequestDto.getUniqueToken())
+    public RefreshTokenResponseDto refreshToken(@RequestHeader("Authorization") String bearerToken) {
+        return tokenService.findByToken(bearerToken.substring(7,bearerToken.length()))
                 .map(tokenService::verifyExpiration)
                 .map(UniqueToken::getUser)
                 .map(user -> {
                     String jwtToken = jwtGenerator.refreshToken(user.getEmail());
                     return RefreshTokenResponseDto.builder()
                             .jwtToken(jwtToken)
-                            .uniqueToken(refreshTokenRequestDto.getUniqueToken())
+                            .uniqueToken(bearerToken.substring(7,bearerToken.length()))
                             .build();
                 }).orElseThrow(() -> new RuntimeException(
                         "Refresh token is not in database!"));

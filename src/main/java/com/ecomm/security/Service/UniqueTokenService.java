@@ -4,6 +4,7 @@ import com.ecomm.security.DAO.UniqueTokenRepo;
 import com.ecomm.security.DAO.UserRepo;
 import com.ecomm.security.Model.UniqueToken;
 import com.ecomm.security.Model.UserEntity;
+import org.springframework.security.authentication.AuthenticationCredentialsNotFoundException;
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;
@@ -21,20 +22,25 @@ public class UniqueTokenService {
         this.uniqueTokenRepo = uniqueTokenRepo;
     }
 
-    public void findUniqueToken(String email) {
+    public UniqueToken findUniqueToken(String email) {
         var user = userRepo.findByEmail(email).get();
-        if (getUniqueToken(user).isEmpty() || isUniqueTokenExpired(user)) {
+        if (getUniqueToken(user).isEmpty() || isUniqueTokenExpired(email)) {
             UniqueToken uniqueToken = UniqueToken.builder()
                     .user(userRepo.findByEmail(email).get())
                     .token(UUID.randomUUID().toString())
                     .expiryDate(Instant.now().plusMillis(600000))//10
                     .build();
-            uniqueTokenRepo.save(uniqueToken);
+            return uniqueTokenRepo.save(uniqueToken);
         }
+        return uniqueTokenRepo.findByUser(user).get();
     }
 
     public Optional<UniqueToken> findByToken(String token) {
         return uniqueTokenRepo.findByToken(token);
+    }
+
+    public String getEmailFromToken(String token){
+        return uniqueTokenRepo.findByToken(token).get().getUser().getEmail();
     }
 
     public String getUniqueToken(UserEntity user){
@@ -45,12 +51,14 @@ public class UniqueTokenService {
     public UniqueToken verifyExpiration(UniqueToken token) {
         if (token.getExpiryDate().compareTo(Instant.now()) < 0) {
             uniqueTokenRepo.delete(token);
-            throw new RuntimeException(token.getToken() + " Refresh token was expired. Please make a new signin request");
+            throw new AuthenticationCredentialsNotFoundException(
+                    token.getToken() + " Refresh token was expired. Please make a new signin request");
         }
         return token;
     }
 
-    public boolean isUniqueTokenExpired(UserEntity user){
+    public boolean isUniqueTokenExpired(String email){
+        UserEntity user = userRepo.findByEmail(email).get();
         UniqueToken token = uniqueTokenRepo.findByUser(user).get();
         if (token.getExpiryDate().compareTo(Instant.now()) < 0){
             uniqueTokenRepo.delete(token);
