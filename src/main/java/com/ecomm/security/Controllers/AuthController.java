@@ -32,23 +32,15 @@ public class AuthController {
     private UniqueTokenService tokenService;
     @Autowired
     private JWTGenerator jwtGenerator;
-    
-    private UserRepo userRepo;
-    private RoleRepo roleRepo;
-
-
     @Autowired
-    public AuthController(UserRepo userRepo, RoleRepo roleRepo) {
-
-        this.userRepo = userRepo;
-        this.roleRepo = roleRepo;
-
-    }
+    private UserRepo userRepo;
+    @Autowired
+    private  RoleRepo roleRepo;
 
 
     @PostMapping("/login")
     public ResponseEntity<UserDetailsDto> login(@RequestBody SigninRequestDto signinRequestDTO){
-            String jwtToken = authService.authenticateUser(signinRequestDTO.getEmail(), signinRequestDTO.getPassword());
+            String jwtToken = jwtGenerator.generateToken(authService.authenticateUser(signinRequestDTO.getEmail(), signinRequestDTO.getPassword()));
             UserEntity user = userRepo.findByEmail(signinRequestDTO.getEmail()).get();
             return new ResponseEntity<>(new UserDetailsDto(user, jwtToken, tokenService.getUniqueToken(user)), HttpStatus.OK);
     }
@@ -56,25 +48,25 @@ public class AuthController {
     @PostMapping("/register")
     public ResponseEntity register(@RequestBody SigninRequestDto signinRequestDTO){
         if(userRepo.existsByEmail(signinRequestDTO.getEmail())){
-            return new ResponseEntity<>("User already exists!", HttpStatus.OK);
+            return new ResponseEntity<>(userRepo.findByEmail(signinRequestDTO.getEmail()), HttpStatus.OK);
         } else {
             UserEntity user = userService.createUser(signinRequestDTO);
-            String jwtToken = authService.authenticateUser(signinRequestDTO.getEmail(), signinRequestDTO.getPassword());
+            String jwtToken = jwtGenerator.generateToken(authService.authenticateUser(user.getEmail(), signinRequestDTO.getPassword()));
             String uniqueToken = tokenService.getUniqueToken(user);
             return new ResponseEntity<>(new UserDetailsDto(user, jwtToken, uniqueToken), HttpStatus.OK);
         }
     }
 
     @PostMapping("/refreshToken")
-    public RefreshTokenResponseDto refreshToken(@RequestBody RefreshTokenRequestDto refreshTokenRequestDto) {
-        return tokenService.findByToken(refreshTokenRequestDto.getUniqueToken())
+    public RefreshTokenResponseDto refreshToken(@RequestHeader("Authorization") String bearerToken) {
+        return tokenService.findByToken(bearerToken.substring(7,bearerToken.length()))
                 .map(tokenService::verifyExpiration)
                 .map(UniqueToken::getUser)
                 .map(user -> {
                     String jwtToken = jwtGenerator.refreshToken(user.getEmail());
                     return RefreshTokenResponseDto.builder()
                             .jwtToken(jwtToken)
-                            .uniqueToken(refreshTokenRequestDto.getUniqueToken())
+                            .uniqueToken(bearerToken.substring(7,bearerToken.length()))
                             .build();
                 }).orElseThrow(() -> new RuntimeException(
                         "Refresh token is not in database!"));
@@ -101,7 +93,7 @@ public class AuthController {
     @PostMapping("/google")
     public ResponseEntity<UserDetailsDto> googlesso(@RequestBody GoogleDto googleDto){
         if(userRepo.existsByEmail(googleDto.getEmail())){
-            return new ResponseEntity<>(new UserDetailsDto(userRepo.findByEmail(googleDto.getEmail()).get(), googleDto.getToken()), HttpStatus.OK);
+            return new ResponseEntity<>(new UserDetailsDto(userRepo.findByEmail(googleDto.getEmail()).get(), googleDto.getToken(), ""), HttpStatus.OK);
         }
         else {
             UserEntity user = new UserEntity();
@@ -114,7 +106,7 @@ public class AuthController {
             user.setRoles(Collections.singletonList(roles));
             userRepo.save(user);
 
-            return new ResponseEntity<>(new UserDetailsDto(user, googleDto.getToken()), HttpStatus.OK);
+            return new ResponseEntity<>(new UserDetailsDto(user, googleDto.getToken(), ""), HttpStatus.OK);
         }
     }
 
