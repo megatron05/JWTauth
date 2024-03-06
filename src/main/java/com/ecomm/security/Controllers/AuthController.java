@@ -59,7 +59,7 @@ public class AuthController {
 
     @PostMapping("/refreshToken")
     public RefreshTokenResponseDto refreshToken(@RequestHeader("Authorization") String bearerToken) {
-        //to return the refresh token
+        System.out.println("Issuing refresh token");
         return tokenService.findByToken(bearerToken.substring(7,bearerToken.length()))
                 .map(tokenService::verifyExpiration)
                 .map(UniqueToken::getUser)
